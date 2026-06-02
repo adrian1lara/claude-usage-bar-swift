@@ -40,8 +40,8 @@ own logged-in session.
 
 ### Download a release
 
-Grab the latest `ClaudeUsageBar.zip` from the **Releases** page, unzip, and move
-`ClaudeUsageBar.app` to `/Applications`.
+Grab the latest `ClaudeUsageBar.dmg` from the **Releases** page, open it, and
+drag `ClaudeUsageBar.app` onto the **Applications** folder.
 
 The build is **unsigned and not notarized** (no Apple Developer Program account),
 so clear the quarantine flag once:
@@ -98,8 +98,9 @@ visible text of `/settings/usage` ("Current session", "All models",
 ## Releases (CI)
 
 `.github/workflows/release.yml` builds the app and publishes a GitHub Release
-(`v1.0.<run-number>`, unsigned zip) on every push to `main`/`master`. The runner
-needs the macOS 26 SDK (`macos-26`); switch to `macos-latest` if unavailable.
+(`v1.0.<run-number>`, unsigned `.dmg`) on every push to `main`/`master`. The
+runner needs the macOS 26 SDK (`macos-26`); switch to `macos-latest` if
+unavailable.
 
 ## License
 

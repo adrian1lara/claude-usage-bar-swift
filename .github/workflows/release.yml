@@ -47,12 +47,20 @@ jobs:
             DEVELOPMENT_TEAM="" \
             clean build
 
-      - name: Package .app into a zip
+      - name: Package .app into a DMG
         run: |
           set -euo pipefail
           APP="build/Build/Products/Release/ClaudeUsageBar.app"
           test -d "$APP"
-          ditto -c -k --sequesterRsrc --keepParent "$APP" "ClaudeUsageBar.zip"
+          STAGING="dmg-staging"
+          mkdir -p "$STAGING"
+          cp -R "$APP" "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"   # drag-to-install target
+          hdiutil create \
+            -volname "ClaudeUsageBar" \
+            -srcfolder "$STAGING" \
+            -ov -format UDZO \
+            "ClaudeUsageBar.dmg"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -60,4 +68,4 @@ jobs:
           tag_name: v1.0.${{ github.run_number }}
           name: ClaudeUsageBar v1.0.${{ github.run_number }}
           generate_release_notes: true
-          files: ClaudeUsageBar.zip
+          files: ClaudeUsageBar.dmg
