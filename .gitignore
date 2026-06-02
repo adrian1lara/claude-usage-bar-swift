@@ -1,0 +1,44 @@
+# macOS
+.DS_Store
+*.swp
+.AppleDouble
+.LSOverride
+Icon
+
+# Xcode — user-specific
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+
+# Xcode — build output
+build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Xcode — misc
+*.xcscmblueprint
+*.xccheckout
+*.playground
+timeline.xctimeline
+
+# Provisioning / secrets — never commit
+*.mobileprovision
+*.provisionprofile
+*.p12
+*.cer
+*.certSigningRequest
+
+# Fastlane / CI artifacts
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+*.app.zip
