@@ -15,6 +15,7 @@ final class ClaudeSession: NSObject {
     private var oauthPopupWindow: NSWindow?
     private var loginWatch: Task<Void, Never>?
     private var loadContinuation: CheckedContinuation<Void, Never>?
+    private var loadGeneration = 0
 
     /// Called when the login window closes (user finished or cancelled sign-in).
     var onLoginFinished: (() -> Void)?
@@ -38,7 +39,10 @@ final class ClaudeSession: NSObject {
     func fetchUsageViaDOM() async -> UsageState {
         let wv = scraper ?? makeScraper()
         await load(wv, Self.usageURL)
-        // Poll innerText up to 12s for parsed session percent.
+        // Poll innerText up to 12s for parsed session percent. Keep the latest
+        // non-empty parse so a session legitimately at reset (no % yet, but plan
+        // + weekly present) still shows data instead of blanking.
+        var last = UsageState()
         for _ in 0..<24 {
             let text = (try? await wv.evaluateJavaScript("document.body ? document.body.innerText : ''")) as? String ?? ""
             var state = UsageParser.parse(text)
@@ -46,15 +50,32 @@ final class ClaudeSession: NSObject {
                 state.scrapedAt = Date()
                 return state
             }
+            if !state.isEmpty { state.scrapedAt = Date(); last = state }
             try? await Task.sleep(nanoseconds: 500_000_000)
         }
-        return UsageState()
+        return last
+    }
+
+    /// Resume the pending load continuation exactly once. Safe to call from the
+    /// navigation delegate or the watchdog; whichever fires first wins.
+    private func resumeLoad() {
+        loadContinuation?.resume()
+        loadContinuation = nil
     }
 
     private func load(_ wv: WKWebView, _ url: URL) async {
+        loadGeneration += 1
+        let gen = loadGeneration
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             loadContinuation = cont
             wv.load(URLRequest(url: url))
+            // Watchdog: if navigation never completes (e.g. network still down
+            // right after wake), unblock so refresh() can't hang forever.
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                guard gen == loadGeneration else { return }   // a newer load owns the continuation
+                resumeLoad()
+            }
         }
     }
 
@@ -142,12 +163,17 @@ extension ClaudeSession: WKNavigationDelegate, WKUIDelegate {
             }
             return
         }
-        loadContinuation?.resume(); loadContinuation = nil
+        resumeLoad()
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         guard !isLoginFlow(webView) else { return }
-        loadContinuation?.resume(); loadContinuation = nil
+        resumeLoad()
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        guard !isLoginFlow(webView) else { return }
+        resumeLoad()   // DNS/connection failure (e.g. network not up yet after wake)
     }
 
     func webView(_ webView: WKWebView,

@@ -37,8 +37,8 @@ struct PopoverView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 18)
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
 
             if poller.state.signedOut {
                 signedOutContent
@@ -46,7 +46,7 @@ struct PopoverView: View {
                 usageContent
             }
         }
-        .frame(width: 360)
+        .frame(width: 290)
         .fixedSize(horizontal: false, vertical: true)
         .glassBackground(cornerRadius: 22)
         .animation(stateAnimation, value: poller.state)
@@ -55,7 +55,7 @@ struct PopoverView: View {
     private var usageContent: some View {
         VStack(spacing: 0) {
             // Rings
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 UsageRing(percent: poller.state.sessionPercent,
                           title: "SESSION",
                           subtitle: poller.state.sessionResetsIn.map { "resets in \($0)" },
@@ -65,8 +65,8 @@ struct PopoverView: View {
                           subtitle: poller.state.weeklyResetsAt.map { "resets \($0)" },
                           reduceMotion: reduceMotion)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 22)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
 
             Divider()
 
@@ -79,8 +79,8 @@ struct PopoverView: View {
                 footerButtons
             }
             .controlSize(.large)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
         }
     }
 
@@ -176,22 +176,22 @@ private struct UsageRing: View {
     }
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             ZStack {
                 Circle()
-                    .stroke(Color.primary.opacity(0.12), lineWidth: 10)
+                    .stroke(Color.primary.opacity(0.12), lineWidth: 8)
                 Circle()
                     .trim(from: 0, to: trim)
-                    .stroke(ringColor, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                    .stroke(ringColor, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                     .animation(fillAnimation, value: trim)
                     .animation(fillAnimation, value: ringColor)
                 Text(UsageFormatting.menuBarLabel(for: percent))
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(.primary)
                     .contentTransition(.numericText())
             }
-            .frame(width: 120, height: 120)
+            .frame(width: 88, height: 88)
 
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
