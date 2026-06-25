@@ -18,8 +18,17 @@ final class StatusItemController {
 
     private var panel: PopoverPanel?
     private var outsideMonitor: Any?
+    private var isClosing = false
     private let gap: CGFloat = 6
-    private let fadeDuration: TimeInterval = 0.18
+    private let fadeInDuration: TimeInterval = 0.16   // open alpha — faster than the spring tail
+    private let closeDuration: TimeInterval = 0.16    // close fade + scale-down
+    private let openScale: CGFloat = 0.90             // spring pop start
+    private let closeScale: CGFloat = 0.96
+    // Medium spring: damping ratio ~0.68 → satisfying pop, not toylike.
+    private let springStiffness: CGFloat = 260
+    private let springDamping: CGFloat = 22
+
+    private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
     init(poller: UsagePoller, onOpenSettings: @escaping () -> Void, onSignIn: @escaping () -> Void) {
         self.poller = poller
@@ -84,9 +93,17 @@ final class StatusItemController {
         hosting.layer?.isOpaque = false
 
         // Transparent container so nothing square shows behind the rounded glass.
+        // Layer-HOSTING (explicit CALayer before wantsLayer): AppKit then leaves the
+        // layer geometry alone, so our custom anchorPoint survives layout and the
+        // scale animation grows from top-center, under the status icon.
         let container = NSView(frame: NSRect(origin: .zero, size: size))
+        let hostLayer = CALayer()
+        hostLayer.frame = NSRect(origin: .zero, size: size)
+        hostLayer.anchorPoint = CGPoint(x: 0.5, y: 1)   // top-center
+        hostLayer.position = CGPoint(x: size.width / 2, y: size.height)
+        hostLayer.backgroundColor = NSColor.clear.cgColor
+        container.layer = hostLayer
         container.wantsLayer = true
-        container.layer?.backgroundColor = NSColor.clear.cgColor
         container.addSubview(hosting)
         panel.contentView = container
         return panel
@@ -96,7 +113,7 @@ final class StatusItemController {
         if NSApp.currentEvent?.type == .rightMouseUp {
             showContextMenu()
         } else if panel != nil {
-            hidePanel()
+            if !isClosing { hidePanel() }   // ignore clicks mid-close
         } else {
             showPanel()
         }
@@ -132,28 +149,72 @@ final class StatusItemController {
             y: buttonInScreen.minY - gap - size.height)
         panel.setFrameOrigin(origin)
 
+        isClosing = false
+        statusItem.button?.highlight(true)
         panel.alphaValue = 0
         panel.makeKeyAndOrderFront(nil)
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = fadeDuration
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            panel.animator().alphaValue = 1
+
+        if reduceMotion {
+            panel.alphaValue = 1
+        } else {
+            // Fade in faster than the spring settles, so the pop happens fully opaque.
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = fadeInDuration
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                panel.animator().alphaValue = 1
+            }
+            if let layer = panel.contentView?.layer {
+                layer.transform = CATransform3DIdentity   // model = final state
+                let spring = CASpringAnimation(keyPath: "transform.scale")
+                spring.fromValue = openScale
+                spring.toValue = 1.0
+                spring.mass = 1
+                spring.stiffness = springStiffness
+                spring.damping = springDamping
+                spring.initialVelocity = 0
+                spring.duration = spring.settlingDuration
+                layer.add(spring, forKey: "popScale")
+            }
         }
 
         installOutsideMonitor()
     }
 
     private func hidePanel() {
-        guard let panel else { return }
+        guard let panel, !isClosing else { return }
+        isClosing = true
         removeOutsideMonitor()
-        NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = fadeDuration
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            panel.animator().alphaValue = 0
-        }, completionHandler: { [weak self] in
+
+        let finish: () -> Void = { [weak self] in
             panel.orderOut(nil)
-            MainActor.assumeIsolated { self?.panel = nil }   // completion runs on main thread
-        })
+            MainActor.assumeIsolated {
+                self?.statusItem.button?.highlight(false)
+                self?.panel = nil
+                self?.isClosing = false
+            }
+        }
+
+        if reduceMotion {
+            panel.alphaValue = 0
+            finish()
+            return
+        }
+
+        let layer = panel.contentView?.layer
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = closeDuration
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            panel.animator().alphaValue = 0
+            if let layer {
+                layer.transform = CATransform3DMakeScale(closeScale, closeScale, 1)
+                let scale = CABasicAnimation(keyPath: "transform.scale")
+                scale.fromValue = 1.0
+                scale.toValue = closeScale
+                scale.duration = closeDuration
+                scale.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                layer.add(scale, forKey: "popScale")
+            }
+        }, completionHandler: finish)   // completion runs on main thread
     }
 
     // MARK: - Outside-click dismissal
@@ -161,7 +222,10 @@ final class StatusItemController {
     private func installOutsideMonitor() {
         outsideMonitor = NSEvent.addGlobalMonitorForEvents(
             matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            MainActor.assumeIsolated { self?.hidePanel() }   // global monitor fires on main thread
+            MainActor.assumeIsolated {
+                guard let self, !self.isClosing else { return }
+                self.hidePanel()   // global monitor fires on main thread
+            }
         }
     }
 

@@ -19,6 +19,9 @@ DerivedData/
 *.dSYM.zip
 *.dSYM
 
+#claude
+.superpowers/
+
 # Swift Package Manager
 .build/
 .swiftpm/
