@@ -37,14 +37,25 @@ final class UsagePoller: ObservableObject {
         isRefreshing = true
         defer { isRefreshing = false }
 
-        guard await session.isAuthenticated() else {
-            state = .signedOut
-            onUpdate?(state)
+        // Scrape first, don't pre-check cookies: WKHTTPCookieStore.allCookies()
+        // reads through the WebKit network process, which doesn't exist until a
+        // web view has loaded — at cold launch it reports 0 cookies even when a
+        // valid session is on disk, which parked the app on "signed out".
+        let newState = await session.fetchUsageViaDOM()
+        NSLog("UsagePoller: fetched session=%@ weekly=%@",
+              newState.sessionPercent.map(String.init) ?? "nil",
+              newState.weeklyPercent.map(String.init) ?? "nil")
+        if !newState.isEmpty {
+            state = newState
+            onUpdate?(newState)
             return
         }
-        let newState = await session.fetchUsageViaDOM()
-        guard !newState.isEmpty else { return }
-        state = newState
-        onUpdate?(newState)
+        // Empty parse: signed out vs transient page failure. The cookie store is
+        // trustworthy here because the scraper's web view just ran.
+        if await session.isAuthenticated() {
+            return   // keep last good state; next poll retries
+        }
+        state = .signedOut
+        onUpdate?(state)
     }
 }

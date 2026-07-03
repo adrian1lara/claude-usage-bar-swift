@@ -82,7 +82,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let w = settingsWindow { w.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); return }
         let view = SettingsView(settings: settings, session: session, launch: launch,
             onIntervalChange: { [weak self] in self?.poller.restart() },
-            onAuthChange: { [weak self] in self?.poller.refreshNow() })
+            onAuthChange: { [weak self] in self?.poller.refreshNow() },
+            onTestNotification: { [weak self] in self?.notifier.postTest() })
         let win = NSWindow(contentRect: .init(x: 0, y: 0, width: 360, height: 420),
                            styleMask: [.titled, .closable], backing: .buffered, defer: false)
         win.title = "Settings"

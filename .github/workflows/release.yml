@@ -47,6 +47,18 @@ jobs:
             DEVELOPMENT_TEAM="" \
             clean build
 
+      # usernoted refuses to register an unsigned bundle, so notifications are
+      # silently dropped. Ad-hoc signing the whole bundle seals resources and
+      # sets the signature identifier from CFBundleIdentifier, which is enough
+      # for Notification Center (users still clear quarantine per the README).
+      - name: Ad-hoc sign the bundle
+        run: |
+          set -euo pipefail
+          APP="build/Build/Products/Release/ClaudeUsageBar.app"
+          test -d "$APP"
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --deep --strict "$APP"
+
       - name: Package .app into a DMG
         run: |
           set -euo pipefail

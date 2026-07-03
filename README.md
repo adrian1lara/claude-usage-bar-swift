@@ -43,8 +43,10 @@ own logged-in session.
 Grab the latest `ClaudeUsageBar.dmg` from the **Releases** page, open it, and
 drag `ClaudeUsageBar.app` onto the **Applications** folder.
 
-The build is **unsigned and not notarized** (no Apple Developer Program account),
-so clear the quarantine flag once:
+The build is **ad-hoc signed and not notarized** (no Apple Developer Program
+account). Ad-hoc signing of the full bundle is required for usage
+notifications to work — Notification Center refuses unsigned apps. Clear the
+quarantine flag once:
 
 ```bash
 xattr -cr /Applications/ClaudeUsageBar.app

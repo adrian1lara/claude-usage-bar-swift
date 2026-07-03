@@ -6,6 +6,7 @@ struct SettingsView: View {
     let launch: LaunchAtLogin
     var onIntervalChange: () -> Void
     var onAuthChange: () -> Void
+    var onTestNotification: () -> Void
 
     @State private var interval: Double
     @State private var sessionThreshold: Double
@@ -14,10 +15,12 @@ struct SettingsView: View {
     @State private var authed = false
 
     init(settings: SettingsStore, session: ClaudeSession, launch: LaunchAtLogin,
-         onIntervalChange: @escaping () -> Void, onAuthChange: @escaping () -> Void = {}) {
+         onIntervalChange: @escaping () -> Void, onAuthChange: @escaping () -> Void = {},
+         onTestNotification: @escaping () -> Void = {}) {
         self.settings = settings; self.session = session; self.launch = launch
         self.onIntervalChange = onIntervalChange
         self.onAuthChange = onAuthChange
+        self.onTestNotification = onTestNotification
         _interval = State(initialValue: Double(settings.pollIntervalSeconds))
         _sessionThreshold = State(initialValue: Double(settings.sessionThreshold))
         _weeklyThreshold = State(initialValue: Double(settings.weeklyThreshold))
@@ -64,6 +67,7 @@ struct SettingsView: View {
                 }
                 Slider(value: $weeklyThreshold, in: 50...100, step: 5)
                     .onChange(of: weeklyThreshold) { _, v in settings.weeklyThreshold = Int(v) }
+                Button("Send test notification") { onTestNotification() }
             } header: {
                 Label("Notifications", systemImage: "bell.badge")
             }

@@ -51,14 +51,19 @@ enum UsageParser {
         // Session ("current session" / daily) section, bounded so a reset to 0%
         // with no "% used" text can't pick up the weekly percent below it.
         if let seg = slice(text, from: ["Current session"],
-                           to: ["All models", "Weekly", "Plan usage", "Claude Design"]) {
+                           to: ["All models", "Weekly", "Plan usage", "Claude Design", "Extra usage",
+                                "Opus", "Sonnet", "Haiku", "Fable", "Usage credits", "Last updated"]) {
             if let pct = group(percentUsed, seg, 1) { out.sessionPercent = Int(pct) }
             if let r = group(resetsIn, seg, 1) { out.sessionResetsIn = r.trimmingCharacters(in: .whitespaces) }
         }
 
-        // Weekly ("all models") section.
+        // Weekly ("all models") section. Ends before any per-model row (Opus,
+        // Fable, …) and before "Usage credits", whose own "% used" would
+        // otherwise be misread as the weekly percent when the weekly section
+        // is freshly reset and shows no percent of its own.
         if let seg = slice(text, from: ["All models", "Weekly limit", "Weekly"],
-                           to: ["Claude Design", "Plan usage"]) {
+                           to: ["Claude Design", "Plan usage",
+                                "Opus", "Sonnet", "Haiku", "Fable", "Usage credits", "Last updated"]) {
             if let pct = group(percentUsed, seg, 1) { out.weeklyPercent = Int(pct) }
             if let r = group(resetsAt, seg, 1) { out.weeklyResetsAt = r.trimmingCharacters(in: .whitespaces) }
         }

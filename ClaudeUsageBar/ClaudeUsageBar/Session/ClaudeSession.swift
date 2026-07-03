@@ -39,18 +39,24 @@ final class ClaudeSession: NSObject {
     func fetchUsageViaDOM() async -> UsageState {
         let wv = scraper ?? makeScraper()
         await load(wv, Self.usageURL)
-        // Poll innerText up to 12s for parsed session percent. Keep the latest
-        // non-empty parse so a session legitimately at reset (no % yet, but plan
-        // + weekly present) still shows data instead of blanking.
+        // Poll innerText up to 12s. The SPA can first render cached/stale usage
+        // before its API fetch lands, so only trust a session percent once the
+        // same value shows on two consecutive samples. Keep the latest non-empty
+        // parse so a session legitimately at reset (no % yet, but plan + weekly
+        // present) still shows data instead of blanking.
         var last = UsageState()
+        var pendingPercent: Int?
         for _ in 0..<24 {
             let text = (try? await wv.evaluateJavaScript("document.body ? document.body.innerText : ''")) as? String ?? ""
             var state = UsageParser.parse(text)
-            if state.sessionPercent != nil {
-                state.scrapedAt = Date()
-                return state
-            }
             if !state.isEmpty { state.scrapedAt = Date(); last = state }
+            ScrapeDebugDump.write(text: text, state: state)
+            if let pct = state.sessionPercent {
+                if pct == pendingPercent { return state }
+                pendingPercent = pct
+            } else {
+                pendingPercent = nil
+            }
             try? await Task.sleep(nanoseconds: 500_000_000)
         }
         return last
@@ -83,8 +89,14 @@ final class ClaudeSession: NSObject {
 
     func isAuthenticated() async -> Bool {
         let cookies = await dataStore.httpCookieStore.allCookies()
-        guard let key = cookies.first(where: { $0.name == "sessionKey" && $0.domain.contains("claude.ai") }) else { return false }
-        if let exp = key.expiresDate, exp < Date() { return false }   // expired = absent
+        guard let key = cookies.first(where: { $0.name == "sessionKey" && $0.domain.contains("claude.ai") }) else {
+            NSLog("ClaudeSession: no sessionKey cookie (%d cookies total)", cookies.count)
+            return false
+        }
+        if let exp = key.expiresDate, exp < Date() {
+            NSLog("ClaudeSession: sessionKey expired at \(exp)")
+            return false
+        }
         return true
     }
 
@@ -133,6 +145,33 @@ final class ClaudeSession: NSObject {
         let claude = records.filter { $0.displayName.contains("claude.ai") || $0.displayName.contains("anthropic") }
         await dataStore.removeData(ofTypes: types, for: claude)
         resetScraper()
+    }
+}
+
+/// Opt-in scrape diagnostics: `defaults write com.wavestudio.ClaudeUsageBar debugDumpScrape -bool true`
+/// writes the latest raw innerText + parsed values to ~/Library/Logs/ClaudeUsageBar/scrape.txt
+/// so a parser/site mismatch can be diagnosed from the exact text the app saw.
+enum ScrapeDebugDump {
+    private static let enabled = UserDefaults.standard.bool(forKey: "debugDumpScrape")
+    private static let url: URL = {
+        let dir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Logs/ClaudeUsageBar", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("scrape.txt")
+    }()
+
+    static func write(text: String, state: UsageState) {
+        guard enabled else { return }
+        let header = """
+        # \(Date())
+        # parsed: session=\(state.sessionPercent.map(String.init) ?? "nil")% \
+        weekly=\(state.weeklyPercent.map(String.init) ?? "nil")% \
+        plan=\(state.plan ?? "nil") \
+        sessionResetsIn=\(state.sessionResetsIn ?? "nil") \
+        weeklyResetsAt=\(state.weeklyResetsAt ?? "nil")
+
+        """
+        try? (header + text).write(to: url, atomically: true, encoding: .utf8)
     }
 }
 
