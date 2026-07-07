@@ -74,6 +74,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             let content = UNMutableNotificationContent()
             content.title = "Claude Usage Bar"
             content.body = body
+            content.sound = .default
             let req = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
             center.add(req) { error in
                 if let error { NSLog("Notifier: add failed: \(error.localizedDescription)") }
