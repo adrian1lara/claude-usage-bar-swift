@@ -84,11 +84,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onIntervalChange: { [weak self] in self?.poller.restart() },
             onAuthChange: { [weak self] in self?.poller.refreshNow() },
             onTestNotification: { [weak self] in self?.notifier.postTest() })
-        let win = NSWindow(contentRect: .init(x: 0, y: 0, width: 360, height: 420),
-                           styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        let win = NSWindow(contentRect: .init(x: 0, y: 0, width: 360, height: 448),
+                           styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
         win.title = "Settings"
+        win.titlebarAppearsTransparent = true
         win.contentView = NSHostingView(rootView: view)
-        win.setContentSize(NSSize(width: 360, height: 420))
+        win.setContentSize(NSSize(width: 360, height: 448))
         win.isMovableByWindowBackground = true
         win.center()
         win.isReleasedWhenClosed = false

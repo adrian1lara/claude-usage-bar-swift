@@ -19,3 +19,20 @@ extension View {
         modifier(GlassBackground(cornerRadius: cornerRadius))
     }
 }
+
+/// Native behind-window vibrancy for standard windows (e.g. Settings).
+/// Unlike `glassBackground`, this keeps the window surface readable —
+/// the system blends desktop content through a proper material.
+struct VisualEffectBackground: NSViewRepresentable {
+    var material: NSVisualEffectView.Material = .underWindowBackground
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let v = NSVisualEffectView()
+        v.material = material
+        v.blendingMode = .behindWindow
+        v.state = .active
+        return v
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+}

@@ -78,7 +78,9 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
         .frame(width: 360, height: 420)
+        .background(VisualEffectBackground().ignoresSafeArea())
         .task {
             authed = await session.isAuthenticated()
             launchEnabled = launch.isEnabled   // reflect real SMAppService state, not just stored flag

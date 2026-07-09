@@ -10,8 +10,8 @@ enum UsageFormatting {
 
     static func tier(for percent: Int) -> UsageTier {
         switch percent {
-        case ..<70: return .normal
-        case 70..<90: return .warn
+        case ..<50: return .normal
+        case 50..<90: return .warn
         default: return .critical
         }
     }

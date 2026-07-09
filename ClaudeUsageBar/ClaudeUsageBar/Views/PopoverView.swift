@@ -115,11 +115,11 @@ struct PopoverView: View {
         if #available(macOS 26.0, *) {
             Button("Sign in", action: onSignIn)
                 .buttonStyle(.glassProminent)
-                .tint(Color(red: 0.78, green: 0.36, blue: 0.27))
+                .tint(Theme.accent)
         } else {
             Button("Sign in", action: onSignIn)
                 .buttonStyle(.borderedProminent)
-                .tint(Color(red: 0.78, green: 0.36, blue: 0.27))
+                .tint(Theme.accent)
         }
     }
 
@@ -142,7 +142,7 @@ struct PopoverView: View {
                         .keyboardShortcut(",", modifiers: .command)
                     Button(action: { poller.refreshNow() }) { refreshLabel }
                         .buttonStyle(.glassProminent)
-                        .tint(Color(red: 0.78, green: 0.36, blue: 0.27))
+                        .tint(Theme.accent)
                         .disabled(poller.isRefreshing)
                         .keyboardShortcut("r", modifiers: .command)
                 }
@@ -154,7 +154,7 @@ struct PopoverView: View {
                     .keyboardShortcut(",", modifiers: .command)
                 Button(action: { poller.refreshNow() }) { refreshLabel }
                     .buttonStyle(.borderedProminent)
-                    .tint(Color(red: 0.78, green: 0.36, blue: 0.27))
+                    .tint(Theme.accent)
                     .disabled(poller.isRefreshing)
                     .keyboardShortcut("r", modifiers: .command)
             }
@@ -168,7 +168,14 @@ private struct UsageRing: View {
     let subtitle: String?
     let reduceMotion: Bool
 
-    private var ringColor: Color { Color(UsageFormatting.color(for: percent)) }
+    private var ringColor: Color {
+        guard let p = percent else { return .secondary }
+        switch UsageFormatting.tier(for: p) {
+        case .normal: return Color(nsColor: .systemGreen)
+        case .warn: return Theme.accent
+        case .critical: return Color(nsColor: .systemRed)
+        }
+    }
     private var trim: CGFloat { CGFloat(min(100, max(0, percent ?? 0))) / 100 }
 
     private var fillAnimation: Animation? {
