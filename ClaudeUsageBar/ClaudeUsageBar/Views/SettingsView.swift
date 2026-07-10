@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var sessionThreshold: Double
     @State private var weeklyThreshold: Double
     @State private var launchEnabled: Bool
+    @State private var notifyReset: Bool
     @State private var authed = false
 
     init(settings: SettingsStore, session: ClaudeSession, launch: LaunchAtLogin,
@@ -25,6 +26,7 @@ struct SettingsView: View {
         _sessionThreshold = State(initialValue: Double(settings.sessionThreshold))
         _weeklyThreshold = State(initialValue: Double(settings.weeklyThreshold))
         _launchEnabled = State(initialValue: settings.launchAtLogin)
+        _notifyReset = State(initialValue: settings.notifyOnReset)
     }
 
     var body: some View {
@@ -67,6 +69,8 @@ struct SettingsView: View {
                 }
                 Slider(value: $weeklyThreshold, in: 50...100, step: 5)
                     .onChange(of: weeklyThreshold) { _, v in settings.weeklyThreshold = Int(v) }
+                Toggle("Notify when a limit resets", isOn: $notifyReset)
+                    .onChange(of: notifyReset) { _, v in settings.notifyOnReset = v }
                 Button("Send test notification") { onTestNotification() }
             } header: {
                 Label("Notifications", systemImage: "bell.badge")

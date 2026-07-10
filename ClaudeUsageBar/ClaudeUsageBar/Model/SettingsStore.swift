@@ -9,6 +9,7 @@ final class SettingsStore {
         static let launch = "launchAtLogin"
         static let sessionThreshold = "sessionThreshold"
         static let weeklyThreshold = "weeklyThreshold"
+        static let notifyOnReset = "notifyOnReset"
     }
 
     var pollIntervalSeconds: Int {
@@ -26,5 +27,9 @@ final class SettingsStore {
     var weeklyThreshold: Int {
         get { defaults.object(forKey: Key.weeklyThreshold) as? Int ?? 80 }
         set { defaults.set(min(100, max(1, newValue)), forKey: Key.weeklyThreshold) }
+    }
+    var notifyOnReset: Bool {
+        get { defaults.object(forKey: Key.notifyOnReset) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: Key.notifyOnReset) }
     }
 }
